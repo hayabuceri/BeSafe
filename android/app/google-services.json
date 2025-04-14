@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1009109940622",
+    "project_id": "besafe-116f5",
+    "storage_bucket": "besafe-116f5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1009109940622:android:9e60afc1616034767b8cdf",
+        "android_client_info": {
+          "package_name": "com.example.besafe_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4h_fcf6N5VOI7Y2dJUNJCHyN5AWn2Kj4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
