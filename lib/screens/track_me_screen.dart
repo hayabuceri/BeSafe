@@ -12,6 +12,9 @@ import 'edit_profile_screen.dart';
 import 'emergency_contacts_screen.dart';
 import 'login_screen.dart';
 import '../services/auth_service.dart';
+import '../widgets/custom_app_bar.dart';
+import '../widgets/sos_button.dart';
+import '../widgets/bottom_nav_bar.dart';
 
 class TrackMeScreen extends StatefulWidget {
   const TrackMeScreen({Key? key}) : super(key: key);
@@ -287,35 +290,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> with WidgetsBindingObserv
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          title: Row(
-            children: [
-              const Text(
-                'Be',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF69B4),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'Safe',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
+        appBar: CustomAppBar(
           actions: [
             PopupMenuButton<String>(
               icon: const Icon(Icons.menu, color: Colors.white),
@@ -497,39 +472,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> with WidgetsBindingObserv
             ),
           ],
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          backgroundColor: Colors.black,
-          selectedItemColor: const Color(0xFFFF69B4),
-          unselectedItemColor: Colors.white,
-          currentIndex: 2, // Track Me tab
-          onTap: (index) {
-            if (index == 0) {
-              // Use simple push to preserve the stack and keep tracking
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-              );
-            } else if (index == 1) {
-              // SOS button - keep on current screen
-            } else if (index == 2) {
-              // Already on Track Me screen
-            }
-          },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.emergency),
-              label: 'SOS',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.location_on),
-              label: 'Track Me',
-            ),
-          ],
-        ),
+        bottomNavigationBar: const BottomNavBar(currentIndex: 2),
       ),
     );
   }

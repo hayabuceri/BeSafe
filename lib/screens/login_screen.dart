@@ -239,33 +239,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Spacer(),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 20.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'Be',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF69B4),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'Safe',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: Image.asset(
+                    'assets/applogo.png',
+                    height: 40, // Match splash screen size
                   ),
                 ),
               ],

@@ -10,6 +10,13 @@ import 'edit_profile_screen.dart';
 import 'emergency_contacts_screen.dart';
 import 'track_me_screen.dart';
 import 'shared_locations_screen.dart';
+import '../widgets/custom_app_bar.dart';
+import '../widgets/sos_button.dart';
+import 'self_defense_screen.dart';
+import 'safety_tips_screen.dart';
+import 'emergency_procedure_screen.dart';
+import 'health_tips_screen.dart';
+import '../widgets/bottom_nav_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? displayName;
@@ -70,173 +77,123 @@ class _HomeScreenState extends State<HomeScreen> {
     
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Welcome, $name',
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.white,
-              ),
-            ),
-            RichText(
-              text: TextSpan(
-                children: [
-                  const TextSpan(
-                    text: 'Be',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  WidgetSpan(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF69B4),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'Safe',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.black,
+      appBar: CustomAppBar(
         actions: [
-          IconButton(
+          PopupMenuButton(
             icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () {
-              // Show menu options
-              showMenu(
-                context: context,
-                position: const RelativeRect.fromLTRB(100, 80, 0, 0),
-                items: [
-                  PopupMenuItem(
-                    child: const Text(
-                      'Profile',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    onTap: () async {
-                      // We need to add a delay because the menu is closing
-                      await Future.delayed(Duration.zero);
-                      if (!context.mounted) return;
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-                      );
-                      // If profile was updated successfully, refresh the display name
-                      if (result == true) {
-                        final user = FirebaseAuth.instance.currentUser;
-                        if (user != null) {
-                          final userData = await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.uid)
-                              .get();
-                          if (userData.exists && mounted) {
-                            setState(() {
-                              // Update the name variable to reflect changes
-                              name = userData['name'] ?? 'User';
-                            });
-                          }
-                        }
+            color: Colors.white,
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                child: const Text(
+                  'Profile',
+                  style: TextStyle(color: Colors.black),
+                ),
+                onTap: () async {
+                  // We need to add a delay because the menu is closing
+                  await Future.delayed(Duration.zero);
+                  if (!context.mounted) return;
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                  );
+                  // If profile was updated successfully, refresh the display name
+                  if (result == true) {
+                    final user = FirebaseAuth.instance.currentUser;
+                    if (user != null) {
+                      final userData = await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(user.uid)
+                          .get();
+                      if (userData.exists && mounted) {
+                        setState(() {
+                          // Update the name variable to reflect changes
+                          name = userData['name'] ?? 'User';
+                        });
                       }
-                    },
-                  ),
-                  PopupMenuItem(
-                    child: const Text(
-                      'Emergency Contacts',
-                      style: TextStyle(color: Colors.black),
+                    }
+                  }
+                },
+              ),
+              PopupMenuItem(
+                child: const Text(
+                  'Emergency Contacts',
+                  style: TextStyle(color: Colors.black),
+                ),
+                onTap: () async {
+                  await Future.delayed(Duration.zero);
+                  if (!context.mounted) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EmergencyContactsScreen(),
                     ),
-                    onTap: () async {
-                      await Future.delayed(Duration.zero);
-                      if (!context.mounted) return;
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EmergencyContactsScreen(),
+                  );
+                },
+              ),
+              PopupMenuItem(
+                child: const Text(
+                  'About',
+                  style: TextStyle(color: Colors.black),
+                ),
+                onTap: () async {
+                  await Future.delayed(Duration.zero);
+                  if (!context.mounted) return;
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        backgroundColor: Colors.black,
+                        title: const Text(
+                          'About BeSafe',
+                          style: TextStyle(
+                            color: Color(0xFFFF69B4),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      );
-                    },
-                  ),
-                  PopupMenuItem(
-                    child: const Text(
-                      'About',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    onTap: () async {
-                      await Future.delayed(Duration.zero);
-                      if (!context.mounted) return;
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            backgroundColor: Colors.black,
-                            title: const Text(
-                              'About BeSafe',
-                              style: TextStyle(
-                                color: Color(0xFFFF69B4),
-                                fontWeight: FontWeight.bold,
-                              ),
+                        content: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'BeSafe is your personal safety companion, designed to provide quick access to emergency services and safety features.',
+                              style: TextStyle(color: Colors.white),
                             ),
-                            content: const Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'BeSafe is your personal safety companion, designed to provide quick access to emergency services and safety features.',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'Version: 1.0.0',
-                                  style: TextStyle(color: Colors.white70),
-                                ),
-                              ],
+                            SizedBox(height: 16),
+                            Text(
+                              'Version: 1.0.0',
+                              style: TextStyle(color: Colors.white70),
                             ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text(
-                                  'Close',
-                                  style: TextStyle(color: Color(0xFFFF69B4)),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              'Close',
+                              style: TextStyle(color: Color(0xFFFF69B4)),
+                            ),
+                          ),
+                        ],
                       );
                     },
-                  ),
-                  PopupMenuItem(
-                    child: const Text(
-                      'Logout',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    onTap: () async {
-                      await _authService.signOut();
-                      if (!context.mounted) return;
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
-                      );
-                    },
-                  ),
-                ],
-              );
-            },
+                  );
+                },
+              ),
+              PopupMenuItem(
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.black),
+                ),
+                onTap: () async {
+                  await _authService.signOut();
+                  if (!context.mounted) return;
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -259,14 +216,103 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     _buildTipCard('Self Defense Tips', 'assets/self_defense.jpg'),
                     _buildTipCard('Safety Tips', 'assets/safety_tips.jpg'),
-                    _buildTipCard('Emergency Procedures', 'assets/emergency.jpg'),
-                    _buildTipCard('Health Tips', 'assets/health.jpg'),
-                    _buildTipCard('Security Tips', 'assets/security.jpg'),
+                    _buildTipCard('Emergency Procedures', 'assets/emergency_procedures.jpg'),
+                    _buildTipCard('Health Tips', 'assets/health_tips.jpg'),
                   ],
                 ),
               ),
               
               const SizedBox(height: 16),
+              
+              // SOS Instructions
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFFF69B4)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF69B4).withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.warning_rounded,
+                            color: Color(0xFFFF69B4),
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'SOS Emergency Feature',
+                          style: TextStyle(
+                            color: Color(0xFFFF69B4),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'How to use:',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildInstructionStep(
+                      '1',
+                      'Press and hold the SOS button for 3 seconds',
+                    ),
+                    _buildInstructionStep(
+                      '2',
+                      'Wait for the 10-second confirmation countdown',
+                    ),
+                    _buildInstructionStep(
+                      '3',
+                      'Your emergency contacts will be notified with your location',
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF69B4).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Color(0xFFFF69B4),
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'You can cancel the alert during the 10-second countdown if triggered by mistake.',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 24),
               
               // Page indicator and counter
               Row(
@@ -445,71 +491,88 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               
               const SizedBox(height: 40),
-              
-              // Bottom Navigation
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildNavButton(Icons.home, 'Home', true),
-                  _buildSOSButton(),
-                  _buildNavButton(Icons.location_on, 'Track Me', false),
-                ],
-              ),
             ],
           ),
         ),
       ),
+      bottomNavigationBar: const BottomNavBar(currentIndex: 0),
     );
   }
   
   Widget _buildTipCard(String title, String imagePath) {
-    return Card(
-      color: Colors.transparent,
-      elevation: 0,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              imagePath,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: Colors.grey[800],
-                  child: const Center(
-                    child: Icon(Icons.image_not_supported, color: Colors.white, size: 40),
-                  ),
-                );
-              },
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
+    return GestureDetector(
+      onTap: () {
+        if (title == 'Self Defense Tips') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SelfDefenseScreen()),
+          );
+        } else if (title == 'Safety Tips') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SafetyTipsScreen()),
+          );
+        } else if (title == 'Emergency Procedures') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const EmergencyProcedureScreen()),
+          );
+        } else if (title == 'Health Tips') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const HealthTipsScreen()),
+          );
+        }
+        
+      },
+      child: Card(
+        color: Colors.transparent,
+        elevation: 0,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  Colors.black.withOpacity(0.7),
-                ],
+              child: Image.asset(
+                imagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey[800],
+                    child: const Center(
+                      child: Icon(Icons.image_not_supported, color: Colors.white, size: 40),
+                    ),
+                  );
+                },
               ),
             ),
-          ),
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.7),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+            Positioned(
+              bottom: 16,
+              left: 16,
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -695,55 +758,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
   
-  Widget _buildNavButton(IconData icon, String label, bool isActive) {
-    return GestureDetector(
-      onTap: () {
-        if (label == 'Track Me') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const TrackMeScreen()),
-          );
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isActive ? const Color(0xFFFF69B4) : Colors.white,
-            size: 28,
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? const Color(0xFFFF69B4) : Colors.white,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildSOSButton() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFFF69B4), width: 2),
-        borderRadius: BorderRadius.circular(50),
-      ),
-      child: const Text(
-        'SOS',
-        style: TextStyle(
-          color: Color(0xFFFF69B4),
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
   void _showAddContactDialog(BuildContext context) async {
     final formKey = GlobalKey<FormState>();
     String name = '';
@@ -934,6 +948,42 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildInstructionStep(String number, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF69B4).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              number,
+              style: const TextStyle(
+                color: Color(0xFFFF69B4),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 } 

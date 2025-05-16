@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../widgets/custom_app_bar.dart';
 
 class EmergencyContactsScreen extends StatefulWidget {
   const EmergencyContactsScreen({Key? key}) : super(key: key);
@@ -137,15 +138,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text(
-          'My Emergency Contact',
-          style: TextStyle(
-            color: Color(0xFFFF69B4),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+      appBar: CustomAppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
