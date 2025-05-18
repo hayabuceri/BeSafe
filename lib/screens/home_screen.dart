@@ -17,6 +17,7 @@ import 'safety_tips_screen.dart';
 import 'emergency_procedure_screen.dart';
 import 'health_tips_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../models/emergency_contact.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? displayName;
@@ -328,18 +329,41 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: Colors.white,
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle, color: Color(0xFFFF69B4)),
-                        onPressed: () => _showAddContactDialog(context),
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(FirebaseAuth.instance.currentUser?.uid)
+                            .collection('home_emergency_contacts')
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          final contactCount = snapshot.data?.docs.length ?? 0;
+                          if (contactCount < 5) {
+                            return IconButton(
+                              icon: const Icon(Icons.add_circle, color: Color(0xFFFF69B4)),
+                              onPressed: () => _showAddContactDialog(context),
+                            );
+                          }
+                          return const SizedBox.shrink(); // Hide add button if limit reached
+                        },
                       ),
                     ],
                   ),
-                  Text(
-                    '${_currentPage + 1}/$_totalPages',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(FirebaseAuth.instance.currentUser?.uid)
+                        .collection('home_emergency_contacts')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      final contactCount = snapshot.data?.docs.length ?? 0;
+                      return Text(
+                        '$contactCount/5',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -353,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   stream: FirebaseFirestore.instance
                       .collection('users')
                       .doc(FirebaseAuth.instance.currentUser?.uid)
-                      .collection('emergency_contacts')
+                      .collection('home_emergency_contacts')
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
@@ -389,57 +413,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       scrollDirection: Axis.horizontal,
                       itemCount: contacts.length,
                       itemBuilder: (context, index) {
-                        final contact = contacts[index].data() as Map<String, dynamic>;
-                        final name = contact['name'] ?? '';
-                        final phone = contact['phone'] ?? '';
-                        
-                        return GestureDetector(
-                          onTap: () async {
-                            if (phone.isNotEmpty) {
-                              final url = Uri.parse('tel:$phone');
-                              if (await canLaunchUrl(url)) {
-                                await launchUrl(url);
-                              } else {
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Could not make phone call')),
-                                );
-                              }
-                            }
-                          },
-                          onLongPress: () => _showDeleteContactDialog(context, contacts[index].id),
-                          child: Container(
-                            width: 150,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF69B4),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  name,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  phone,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
+                        final contactData = contacts[index].data() as Map<String, dynamic>;
+                        final contact = EmergencyContact.fromMap(contactData);
+                        return _buildContactCard(contact);
                       },
                     );
                   },
@@ -758,196 +734,244 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
   
-  void _showAddContactDialog(BuildContext context) async {
+  void _showAddContactDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
     final formKey = GlobalKey<FormState>();
-    String name = '';
-    String phone = '';
 
     // Check if user has reached the limit
-    final contacts = await FirebaseFirestore.instance
+    FirebaseFirestore.instance
         .collection('users')
         .doc(FirebaseAuth.instance.currentUser?.uid)
-        .collection('emergency_contacts')
-        .get();
-
-    if (contacts.docs.length >= 5) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maximum 5 emergency contacts allowed')),
-      );
-      return;
-    }
-
-    if (!context.mounted) return;
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.black,
-          title: const Text(
-            'Add Emergency Contact',
-            style: TextStyle(
-              color: Color(0xFFFF69B4),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    labelStyle: TextStyle(color: Colors.white70),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white70),
+        .collection('home_emergency_contacts')
+        .get()
+        .then((snapshot) {
+          if (snapshot.docs.length >= 5) {
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Maximum 5 emergency contacts allowed')),
+            );
+            return;
+          }
+          
+          if (!context.mounted) return;
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: Colors.black,
+              title: const Text(
+                'Add Emergency Contact',
+                style: TextStyle(color: Color(0xFFFF69B4)),
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Name',
+                        labelStyle: TextStyle(color: Colors.white70),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white70),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFFF69B4)),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a name';
+                        }
+                        return null;
+                      },
                     ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFFFF69B4)),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: phoneController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Phone Number',
+                        labelStyle: TextStyle(color: Colors.white70),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white70),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFFF69B4)),
+                        ),
+                      ),
+                      keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a phone number';
+                        }
+                        return null;
+                      },
                     ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a name';
-                    }
-                    return null;
-                  },
-                  onSaved: (value) {
-                    name = value ?? '';
-                  },
+                  ],
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    labelStyle: TextStyle(color: Colors.white70),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white70),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFFFF69B4)),
-                    ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.white70),
                   ),
-                  keyboardType: TextInputType.phone,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a phone number';
+                ),
+                TextButton(
+                  onPressed: () async {
+                    if (formKey.currentState!.validate()) {
+                      final user = FirebaseAuth.instance.currentUser;
+                      if (user != null) {
+                        final contact = EmergencyContact(
+                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                          name: nameController.text.trim(),
+                          phone: phoneController.text.trim(),
+                        );
+
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(user.uid)
+                            .collection('home_emergency_contacts')
+                            .doc(contact.id)
+                            .set(contact.toMap());
+
+                        if (!context.mounted) return;
+                        Navigator.pop(context);
+                      }
                     }
-                    return null;
                   },
-                  onSaved: (value) {
-                    phone = value ?? '';
-                  },
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(color: Color(0xFFFF69B4)),
+                  ),
                 ),
               ],
             ),
+          );
+        });
+  }
+
+  Widget _buildContactCard(EmergencyContact contact) {
+    return Container(
+      width: 160,
+      height: 150,
+      margin: const EdgeInsets.only(right: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFFFF69B4)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.person_outline,
+            color: Color(0xFFFF69B4),
+            size: 20,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white70),
-              ),
+          const SizedBox(height: 4),
+          Text(
+            contact.name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
             ),
-            TextButton(
-              onPressed: () async {
-                if (formKey.currentState!.validate()) {
-                  formKey.currentState!.save();
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            contact.phone,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
+          ),
+          const Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () async {
+                  final phoneNumber = contact.phone;
+                  final url = Uri.parse('tel:$phoneNumber');
                   
                   try {
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(FirebaseAuth.instance.currentUser?.uid)
-                        .collection('emergency_contacts')
-                        .add({
-                          'name': name,
-                          'phone': phone,
-                          'timestamp': FieldValue.serverTimestamp(),
-                        });
-                    
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Emergency contact added successfully')),
-                    );
+                    await launchUrl(url);
                   } catch (e) {
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Error adding emergency contact')),
+                      const SnackBar(content: Text('Could not open phone dialer')),
                     );
                   }
-                }
-              },
-              child: const Text(
-                'Add',
-                style: TextStyle(color: Color(0xFFFF69B4)),
+                },
+                child: const Icon(
+                  Icons.phone,
+                  color: Color(0xFFFF69B4),
+                  size: 24,
+                ),
               ),
-            ),
-          ],
-        );
-      },
-    );
-  }
+              GestureDetector(
+                onTap: () async {
+                  // Show confirmation dialog
+                  final shouldDelete = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: Colors.black,
+                      title: const Text(
+                        'Delete Contact',
+                        style: TextStyle(color: Color(0xFFFF69B4)),
+                      ),
+                      content: Text(
+                        'Are you sure you want to delete ${contact.name}?',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text(
+                            'No',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text(
+                            'Yes',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
 
-  void _showDeleteContactDialog(BuildContext context, String contactId) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.black,
-          title: const Text(
-            'Delete Contact',
-            style: TextStyle(
-              color: Color(0xFFFF69B4),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: const Text(
-            'Are you sure you want to remove this contact from emergency contacts?',
-            style: TextStyle(color: Colors.white),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white70),
+                  if (shouldDelete == true) {
+                    final user = FirebaseAuth.instance.currentUser;
+                    if (user != null) {
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(user.uid)
+                          .collection('home_emergency_contacts')
+                          .doc(contact.id)
+                          .delete();
+                    }
+                  }
+                },
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                  size: 24,
+                ),
               ),
-            ),
-            TextButton(
-              onPressed: () async {
-                try {
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(FirebaseAuth.instance.currentUser?.uid)
-                      .collection('emergency_contacts')
-                      .doc(contactId)
-                      .delete();
-                  
-                  if (!context.mounted) return;
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Contact removed successfully')),
-                  );
-                } catch (e) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Error removing contact')),
-                  );
-                }
-              },
-              child: const Text(
-                'Delete',
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          ],
-        );
-      },
+            ],
+          ),
+        ],
+      ),
     );
   }
 

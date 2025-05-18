@@ -105,11 +105,18 @@ class _SOSButtonState extends State<SOSButton> {
       return GestureDetector(
         onTap: _handleSOSTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: const Color(0xFFFF69B4), width: 2),
             borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF69B4).withOpacity(0.3),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: const Text(
             'SOS',
@@ -118,6 +125,7 @@ class _SOSButtonState extends State<SOSButton> {
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
+            textAlign: TextAlign.center,
           ),
         ),
       );
