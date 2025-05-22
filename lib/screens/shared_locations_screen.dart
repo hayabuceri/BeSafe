@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/sos_button.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/app_menu.dart';
 
 class SharedLocationsScreen extends StatefulWidget {
   const SharedLocationsScreen({Key? key}) : super(key: key);
@@ -48,113 +49,7 @@ class _SharedLocationsScreenState extends State<SharedLocationsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () {
-              showMenu(
-                context: context,
-                position: const RelativeRect.fromLTRB(100, 80, 0, 0),
-                items: [
-                  PopupMenuItem(
-                    child: const Text(
-                      'Profile',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    onTap: () async {
-                      await Future.delayed(Duration.zero);
-                      if (!context.mounted) return;
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-                      );
-                      if (result == true) {
-                        setState(() {}); // Refresh the screen
-                      }
-                    },
-                  ),
-                  PopupMenuItem(
-                    child: const Text(
-                      'Emergency Contacts',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    onTap: () async {
-                      await Future.delayed(Duration.zero);
-                      if (!context.mounted) return;
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EmergencyContactsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  PopupMenuItem(
-                    child: const Text(
-                      'About',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    onTap: () async {
-                      await Future.delayed(Duration.zero);
-                      if (!context.mounted) return;
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            backgroundColor: Colors.black,
-                            title: const Text(
-                              'About BeSafe',
-                              style: TextStyle(
-                                color: Color(0xFFFF69B4),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            content: const Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'BeSafe is your personal safety companion, designed to provide quick access to emergency services and safety features.',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'Version: 1.0.0',
-                                  style: TextStyle(color: Colors.white70),
-                                ),
-                              ],
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text(
-                                  'Close',
-                                  style: TextStyle(color: Color(0xFFFF69B4)),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  ),
-                  PopupMenuItem(
-                    child: const Text(
-                      'Logout',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    onTap: () async {
-                      await _authService.signOut();
-                      if (!context.mounted) return;
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
-                      );
-                    },
-                  ),
-                ],
-              );
-            },
-          ),
+          AppMenu(),
         ],
       ),
       body: currentUser == null

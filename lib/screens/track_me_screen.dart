@@ -15,6 +15,7 @@ import '../services/auth_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/sos_button.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/app_menu.dart';
 
 class TrackMeScreen extends StatefulWidget {
   const TrackMeScreen({Key? key}) : super(key: key);
@@ -37,7 +38,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> with WidgetsBindingObserv
   Timer? _timer;
   String _remainingTime = '';
 
-  @override
+  @override   
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
@@ -290,82 +291,21 @@ class _TrackMeScreenState extends State<TrackMeScreen> with WidgetsBindingObserv
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        appBar: CustomAppBar(
-          actions: [
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.menu, color: Colors.white),
-              color: Colors.black,
-              itemBuilder: (BuildContext context) => [
-                const PopupMenuItem<String>(
-                  value: 'profile',
-                  child: Text('Profile', style: TextStyle(color: Colors.white)),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'emergency_contacts',
-                  child: Text('Emergency Contacts', style: TextStyle(color: Colors.white)),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'about',
-                  child: Text('About', style: TextStyle(color: Colors.white)),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'logout',
-                  child: Text('Logout', style: TextStyle(color: Colors.white)),
-                ),
-              ],
-              onSelected: (String value) async {
-                switch (value) {
-                  case 'profile':
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-                    );
-                    break;
-                  case 'emergency_contacts':
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const EmergencyContactsScreen()),
-                    );
-                    break;
-                  case 'about':
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          backgroundColor: Colors.black,
-                          title: const Text(
-                            'About BeSafe',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          content: const Text(
-                            'BeSafe is a personal safety app that helps you stay connected with your loved ones. Share your location, send emergency alerts, and manage your emergency contacts all in one place.',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text(
-                                'Close',
-                                style: TextStyle(color: Color(0xFFFF69B4)),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                    break;
-                  case 'logout':
-                    await AuthService().signOut();
-                    if (!mounted) return;
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const LoginScreen()),
-                      (route) => false,
-                    );
-                    break;
-                }
-              },
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          title: const Text(
+            'Track Me',
+            style: TextStyle(
+              color: Color(0xFFFF69B4),
+              fontWeight: FontWeight.bold,
             ),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          actions: [
+            AppMenu(),
           ],
         ),
         body: Column(
