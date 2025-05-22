@@ -7,7 +7,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_profile_screen.dart';
-import 'emergency_contacts_screen.dart';
 import 'track_me_screen.dart';
 import 'shared_locations_screen.dart';
 import '../widgets/custom_app_bar.dart';
@@ -18,6 +17,7 @@ import 'emergency_procedure_screen.dart';
 import 'health_tips_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../models/emergency_contact.dart';
+import 'emergency_contacts_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? displayName;
@@ -31,12 +31,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final PageController _tipsController = PageController();
   int _currentPage = 0;
-  final int _totalPages = 5;
+  final int _totalPages = 4;
 
   @override
   void initState() {
     super.initState();
-    // Auto-scroll the tips carousel
     Future.delayed(const Duration(seconds: 3), () {
       _startAutoScroll();
     });
@@ -72,8 +71,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final AuthService _authService = AuthService();
     final user = _authService.getCurrentUser();
-    
-    // Use the passed display name if available, otherwise try to get it from Firebase
     String name = widget.displayName ?? user?.displayName ?? 'User';
     
     return Scaffold(
@@ -90,14 +87,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(color: Colors.black),
                 ),
                 onTap: () async {
-                  // We need to add a delay because the menu is closing
                   await Future.delayed(Duration.zero);
                   if (!context.mounted) return;
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const EditProfileScreen()),
                   );
-                  // If profile was updated successfully, refresh the display name
                   if (result == true) {
                     final user = FirebaseAuth.instance.currentUser;
                     if (user != null) {
@@ -107,7 +102,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           .get();
                       if (userData.exists && mounted) {
                         setState(() {
-                          // Update the name variable to reflect changes
                           name = userData['name'] ?? 'User';
                         });
                       }
@@ -204,7 +198,6 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Tips Carousel
               SizedBox(
                 height: 200,
                 child: PageView(
@@ -225,7 +218,6 @@ class _HomeScreenState extends State<HomeScreen> {
               
               const SizedBox(height: 16),
               
-              // SOS Instructions
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -272,15 +264,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 8),
                     _buildInstructionStep(
                       '1',
-                      'Press and hold the SOS button for 3 seconds',
+                      'Press the SOS button',
                     ),
                     _buildInstructionStep(
                       '2',
-                      'Wait for the 10-second confirmation countdown',
+                      'Reconfirm the alert by pressing the Yes button',
                     ),
                     _buildInstructionStep(
                       '3',
-                      'Your emergency contacts will be notified with your location',
+                      'Your emergency contacts will be received your shared location',
                     ),
                     const SizedBox(height: 12),
                     Container(
@@ -299,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'You can cancel the alert during the 10-second countdown if triggered by mistake.',
+                              'You can cancel the alert by select "No" option if triggered by mistake.',
                               style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12,
@@ -315,7 +307,6 @@ class _HomeScreenState extends State<HomeScreen> {
               
               const SizedBox(height: 24),
               
-              // Page indicator and counter
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -343,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onPressed: () => _showAddContactDialog(context),
                             );
                           }
-                          return const SizedBox.shrink(); // Hide add button if limit reached
+                          return const SizedBox.shrink();
                         },
                       ),
                     ],
@@ -370,7 +361,6 @@ class _HomeScreenState extends State<HomeScreen> {
               
               const SizedBox(height: 16),
               
-              // Emergency Contacts
               SizedBox(
                 height: 120,
                 child: StreamBuilder<QuerySnapshot>(
@@ -424,7 +414,6 @@ class _HomeScreenState extends State<HomeScreen> {
               
               const SizedBox(height: 24),
               
-              // Essential Services
               const Text(
                 'Essential Services',
                 style: TextStyle(
@@ -436,7 +425,6 @@ class _HomeScreenState extends State<HomeScreen> {
               
               const SizedBox(height: 16),
               
-              // Services Icons
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -499,7 +487,6 @@ class _HomeScreenState extends State<HomeScreen> {
             MaterialPageRoute(builder: (context) => const HealthTipsScreen()),
           );
         }
-        
       },
       child: Card(
         color: Colors.transparent,
@@ -598,10 +585,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-  
+
   Future<void> _openNearbyPoliceStations() async {
     try {
-      // Request location permission
       final status = await Permission.location.request();
       if (status.isDenied) {
         if (!mounted) return;
@@ -611,23 +597,19 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      // Show loading indicator
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Finding nearby police stations...')),
       );
 
-      // Get current location
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      // Create Google Maps URL for nearby police stations
       final url = Uri.parse(
         'https://www.google.com/maps/search/police+station/@${position.latitude},${position.longitude},14z',
       );
 
-      // Open Google Maps
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
@@ -646,7 +628,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _openNearbyHospitals() async {
     try {
-      // Request location permission
       final status = await Permission.location.request();
       if (status.isDenied) {
         if (!mounted) return;
@@ -656,23 +637,19 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      // Show loading indicator
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Finding nearby hospitals...')),
       );
 
-      // Get current location
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      // Create Google Maps URL for nearby hospitals
       final url = Uri.parse(
         'https://www.google.com/maps/search/hospital/@${position.latitude},${position.longitude},14z',
       );
 
-      // Open Google Maps
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
@@ -691,7 +668,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _openNearbyPetrolPumps() async {
     try {
-      // Request location permission
       final status = await Permission.location.request();
       if (status.isDenied) {
         if (!mounted) return;
@@ -701,23 +677,19 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      // Show loading indicator
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Finding nearby petrol pumps...')),
       );
 
-      // Get current location
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      // Create Google Maps URL for nearby petrol pumps
       final url = Uri.parse(
         'https://www.google.com/maps/search/petrol+pump/@${position.latitude},${position.longitude},14z',
       );
 
-      // Open Google Maps
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
@@ -739,7 +711,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final phoneController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    // Check if user has reached the limit
     FirebaseFirestore.instance
         .collection('users')
         .doc(FirebaseAuth.instance.currentUser?.uid)
@@ -918,7 +889,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               GestureDetector(
                 onTap: () async {
-                  // Show confirmation dialog
                   final shouldDelete = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
