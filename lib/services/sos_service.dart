@@ -9,22 +9,46 @@ class SOSService {
   Timer? _locationUpdateTimer;
   String? _currentAlertId;
 
-  Future<void> sendSOSAlert() async {
+  Future<void> sendSOSAlert({
+    required String groupId,
+    required String message,
+  }) async {
     try {
       final user = _auth.currentUser;
       if (user == null) return;
+
+      // Cancel any existing active SOS alerts for this user
+      final activeAlerts = await _firestore
+          .collection('sos_alerts')
+          .where('userId', isEqualTo: user.uid)
+          .where('status', isEqualTo: 'active')
+          .get();
+      for (var doc in activeAlerts.docs) {
+        await doc.reference.update({
+          'status': 'canceled',
+          'endTime': FieldValue.serverTimestamp(),
+        });
+      }
 
       // Get current location
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      // Get user's emergency contacts
-      final contactsSnapshot = await _firestore
+      // Get SOS group members
+      final groupDoc = await _firestore
           .collection('users')
           .doc(user.uid)
-          .collection('emergency_contacts')
+          .collection('sos_groups')
+          .doc(groupId)
           .get();
+
+      if (!groupDoc.exists) {
+        throw Exception('SOS group not found');
+      }
+
+      final groupData = groupDoc.data() as Map<String, dynamic>;
+      final memberIds = List<String>.from(groupData['members'] ?? []);
 
       // Get user's name
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
@@ -39,30 +63,40 @@ class SOSService {
         'userName': userName,
         'location': GeoPoint(position.latitude, position.longitude),
         'timestamp': FieldValue.serverTimestamp(),
-        'message': 'I need help',
+        'message': message,
         'status': 'active',
         'endTime': endTime,
-        'notifiedContacts': contactsSnapshot.docs.map((doc) => doc.id).toList(),
+        'groupId': groupId,
+        'notifiedMembers': memberIds,
       });
 
       _currentAlertId = sosRef.id;
 
-      // Notify each emergency contact
-      for (var contact in contactsSnapshot.docs) {
-        final contactData = contact.data();
+      // Get group members' data
+      final membersSnapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('emergency_contacts')
+          .where(FieldPath.documentId, whereIn: memberIds)
+          .get();
+
+      // Notify each group member
+      for (var member in membersSnapshot.docs) {
+        final memberData = member.data();
         await _firestore
             .collection('emergency_notifications')
             .add({
               'sosAlertId': sosRef.id,
               'userId': user.uid,
               'userName': userName,
-              'contactName': contactData['name'],
-              'contactPhone': contactData['phone'],
-              'message': 'I need help',
+              'contactName': memberData['name'],
+              'contactPhone': memberData['phone'],
+              'message': message,
               'location': GeoPoint(position.latitude, position.longitude),
               'timestamp': FieldValue.serverTimestamp(),
               'endTime': endTime,
               'status': 'sent',
+              'groupId': groupId,
             });
       }
 
@@ -134,44 +168,4 @@ class SOSService {
   void dispose() {
     _locationUpdateTimer?.cancel();
   }
-
-  Future<void> shareLocationWithEmergencyContacts() async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) throw Exception('User not logged in');
-
-      // Get current location
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      // Get user's emergency contacts
-      final contactsSnapshot = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('emergency_contacts')
-          .get();
-
-      // Get user's name
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      final userName = userDoc.data()?['name'] ?? 'Unknown User';
-
-      // Create location sharing session
-      await _firestore.collection('location_sharing').add({
-        'userId': user.uid,
-        'userName': userName,
-        'lastLocation': GeoPoint(position.latitude, position.longitude),
-        'startTime': FieldValue.serverTimestamp(),
-        'lastUpdate': FieldValue.serverTimestamp(),
-        'duration': 12, // 12 hours
-        'active': true,
-        'isEmergency': true,
-        'sharedWith': contactsSnapshot.docs.map((doc) => doc.id).toList(),
-      });
-
-    } catch (e) {
-      print('Error sharing location with emergency contacts: $e');
-      rethrow;
-    }
-  }
-} 
+}

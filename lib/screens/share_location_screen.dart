@@ -313,9 +313,9 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildDurationOption(1, '1 hours'),
-                  _buildDurationOption(8, '8 hours'),
-                  _buildDurationOption(12, '12 hours'),
+                  _buildDurationOption(1, '1 hr'),
+                  _buildDurationOption(8, '8 hr'),
+                  _buildDurationOption(12, '12 hr'),
                 ],
               ),
               const Spacer(),

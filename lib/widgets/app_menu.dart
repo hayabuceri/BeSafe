@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../screens/edit_profile_screen.dart';
 import '../screens/emergency_contacts_screen.dart';
 import '../screens/login_screen.dart';
+import '../screens/manage_sos_groups_screen.dart';
 
 class AppMenu extends StatelessWidget {
   final Function(String)? onNameUpdate;
@@ -56,6 +57,22 @@ class AppMenu extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => const EmergencyContactsScreen(),
+              ),
+            );
+          },
+        ),
+        PopupMenuItem(
+          child: const Text(
+            'Manage SOS Groups',
+            style: TextStyle(color: Colors.black),
+          ),
+          onTap: () async {
+            await Future.delayed(Duration.zero);
+            if (!context.mounted) return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ManageSOSGroupsScreen(),
               ),
             );
           },

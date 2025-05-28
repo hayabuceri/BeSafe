@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'screens/splash_screen.dart';
+import 'screens/emergency_contacts_screen.dart';
+import 'screens/create_sos_group_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +40,10 @@ class MyApp extends StatelessWidget {
       ),
       home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
+      routes: {
+        '/emergency_contacts': (context) => const EmergencyContactsScreen(),
+        '/create_sos_group': (context) => const CreateSOSGroupScreen(),
+      },
     );
   }
 }

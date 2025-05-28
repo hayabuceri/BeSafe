@@ -19,6 +19,7 @@ import '../widgets/bottom_nav_bar.dart';
 import '../models/emergency_contact.dart';
 import 'emergency_contacts_screen.dart';
 import '../widgets/app_menu.dart';
+import 'my_sos_alert_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? displayName;
@@ -326,7 +327,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildServiceIcon(
-                      Icons.location_on,
+                      Icons.security,
                       'Police Stations',
                       const Color(0xFFFF69B4),
                     ),
@@ -350,6 +351,80 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               
               const SizedBox(height: 40),
+
+              // Active SOS Indicator for the current user
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('sos_alerts')
+                    .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                    .where('status', isEqualTo: 'active')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0xFFFF69B4)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF69B4).withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.warning_rounded,
+                                  color: Color(0xFFFF69B4),
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Active SOS Alert',
+                                style: TextStyle(
+                                  color: Color(0xFFFF69B4),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'An active SOS alert exists for the current user.',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const MySOSAlertScreen(),
+                              ),
+                            ),
+                            child: const Text(
+                              'View SOS Alert',
+                              style: TextStyle(color: Color(0xFFFF69B4)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  } else {
+                    // No active SOS, hide the indicator
+                    return const SizedBox.shrink();
+                  }
+                },
+              ),
             ],
           ),
         ),
