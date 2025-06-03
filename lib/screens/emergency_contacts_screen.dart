@@ -21,8 +21,8 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     super.dispose();
   }
 
-  Future<void> _searchUsers(String phoneNumber) async {
-    if (phoneNumber.isEmpty) {
+  Future<void> _searchUsers(String query) async {
+    if (query.isEmpty) {
       setState(() {
         _searchResults = [];
         _isSearching = false;
@@ -35,20 +35,46 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     });
 
     try {
-      // Search for users with matching phone number
+      // Search for users with matching phone number or name
       final querySnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .where('phone', isEqualTo: phoneNumber)
+          .where('phone', isEqualTo: query)
           .get();
 
+      final nameQuerySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('name', isGreaterThanOrEqualTo: query)
+          .where('name', isLessThanOrEqualTo: query + '\uf8ff')
+          .get();
+
+      // Combine and deduplicate results
+      final Set<String> seenIds = {};
+      final List<Map<String, dynamic>> combinedResults = [];
+
+      for (var doc in querySnapshot.docs) {
+        if (!seenIds.contains(doc.id)) {
+          seenIds.add(doc.id);
+          combinedResults.add({
+            'id': doc.id,
+            'name': doc['name'] as String,
+            'phone': doc['phone'] as String,
+          });
+        }
+      }
+
+      for (var doc in nameQuerySnapshot.docs) {
+        if (!seenIds.contains(doc.id)) {
+          seenIds.add(doc.id);
+          combinedResults.add({
+            'id': doc.id,
+            'name': doc['name'] as String,
+            'phone': doc['phone'] as String,
+          });
+        }
+      }
+
       setState(() {
-        _searchResults = querySnapshot.docs
-            .map((doc) => {
-                  'id': doc.id,
-                  'name': doc['name'] as String,
-                  'phone': doc['phone'] as String,
-                })
-            .toList();
+        _searchResults = combinedResults;
         _isSearching = false;
       });
     } catch (e) {
@@ -151,17 +177,18 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _searchController,
+              style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: 'Search by phone number',
+                hintText: 'Search by name or phone number',
                 hintStyle: const TextStyle(color: Colors.grey),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: Colors.white.withOpacity(0.1),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
                   borderSide: BorderSide.none,
                 ),
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
+                  icon: const Icon(Icons.search, color: Colors.grey),
                   onPressed: () => _searchUsers(_searchController.text.trim()),
                 ),
               ),

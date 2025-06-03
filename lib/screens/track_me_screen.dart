@@ -12,6 +12,7 @@ import 'edit_profile_screen.dart';
 import 'emergency_contacts_screen.dart';
 import 'login_screen.dart';
 import '../services/auth_service.dart';
+import '../services/location_service.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/sos_button.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -61,6 +62,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> with WidgetsBindingObserv
     }
     _timer?.cancel();
     _sosTimer?.cancel();
+    LocationService().dispose();
     super.dispose();
   }
 
@@ -160,10 +162,17 @@ class _TrackMeScreenState extends State<TrackMeScreen> with WidgetsBindingObserv
     });
 
     try {
+      // Start background tracking using LocationService
+      if (_activeSharingSessionId != null) {
+        await LocationService().startBackgroundTracking(_activeSharingSessionId!);
+      }
+
+      // Start UI updates
       _positionStream = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: 10,
+          distanceFilter: 5,
+          timeLimit: Duration(seconds: 10),
         ),
       );
 
@@ -180,8 +189,6 @@ class _TrackMeScreenState extends State<TrackMeScreen> with WidgetsBindingObserv
             _mapController.camera.zoom,
           );
         }
-        
-        _updateLocationInFirestore(position);
       });
 
     } catch (e) {
@@ -223,6 +230,9 @@ class _TrackMeScreenState extends State<TrackMeScreen> with WidgetsBindingObserv
       _positionSubscription = null;
     }
     _timer?.cancel();
+    
+    // Stop background tracking
+    await LocationService().stopBackgroundTracking();
     
     // End the sharing session
     if (_activeSharingSessionId != null) {
@@ -380,7 +390,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
-    print('TrackMeScreen Build: _sosAlertId=$_sosAlertId, _sosRemainingTime=$_sosRemainingTime, _isTracking=$_isTracking');
+    print('TrackMeScreen Build: _isTracking=$_isTracking');
     return WillPopScope(
       onWillPop: () async {
         // Don't stop tracking when navigating back
@@ -407,193 +417,106 @@ class _TrackMeScreenState extends State<TrackMeScreen> with WidgetsBindingObserv
         ),
         body: Column(
           children: [
-            if (_sosAlertId != null && _sosRemainingTime.isNotEmpty) ...[
-              Container(
-                margin: const EdgeInsets.all(16.0),
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red, width: 1),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.warning, color: Colors.red, size: 24),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Active SOS Alert',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          _sosRemainingTime,
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.timer, color: Colors.red, size: 20),
-                      ],
+            Container(
+              padding: const EdgeInsets.all(16),
+              width: double.infinity,
+              color: Colors.black,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Track me',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 300,
-                      child: _currentPosition == null
-                          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)))
-                          : FlutterMap(
-                              mapController: _mapController,
-                              options: MapOptions(
-                                initialCenter: LatLng(
-                                  _currentPosition!.latitude,
-                                  _currentPosition!.longitude,
-                                ),
-                                initialZoom: 15,
-                                interactiveFlags: InteractiveFlag.none,
-                              ),
-                              children: [
-                                TileLayer(
-                                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName: 'com.example.besafe_app',
-                                ),
-                                MarkerLayer(markers: _markers),
-                              ],
-                            ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _isTracking 
+                        ? 'Sharing location with ${_sharedWithContacts.length} contacts'
+                        : 'Share live location with your friends',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
                     ),
-                    const SizedBox(height: 16),
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: _stopSOSAlert,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          minimumSize: const Size(200, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: const Text(
-                          'Stop SOS',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                  ),
+                  if (_isTracking) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF69B4).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                width: double.infinity,
-                color: Colors.black,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Track me',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _isTracking 
-                          ? 'Sharing location with ${_sharedWithContacts.length} contacts'
-                          : 'Share live location with your friends',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
-                      ),
-                    ),
-                    if (_isTracking) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF69B4).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.timer,
-                              color: Color(0xFFFF69B4),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Time remaining: $_remainingTime',
-                              style: const TextStyle(
-                                color: Color(0xFFFF69B4),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Expanded(
-                child: _currentPosition == null
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)))
-                    : FlutterMap(
-                        mapController: _mapController,
-                        options: MapOptions(
-                          initialCenter: LatLng(
-                            _currentPosition!.latitude,
-                            _currentPosition!.longitude,
-                          ),
-                          initialZoom: 15,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          TileLayer(
-                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                            userAgentPackageName: 'com.example.besafe_app',
+                          const Icon(
+                            Icons.timer,
+                            color: Color(0xFFFF69B4),
+                            size: 16,
                           ),
-                          MarkerLayer(markers: _markers),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Time remaining: $_remainingTime',
+                            style: const TextStyle(
+                              color: Color(0xFFFF69B4),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
+                    ),
+                  ],
+                ],
               ),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                child: ElevatedButton(
-                  onPressed: _isTracking ? _stopTracking : _onTrackMePressed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isTracking ? Colors.red : const Color(0xFFFF69B4),
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
+            ),
+            Expanded(
+              child: _currentPosition == null
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)))
+                  : FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: LatLng(
+                          _currentPosition!.latitude,
+                          _currentPosition!.longitude,
+                        ),
+                        initialZoom: 15,
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.example.besafe_app',
+                        ),
+                        MarkerLayer(markers: _markers),
+                      ],
                     ),
+            ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton(
+                onPressed: _isTracking ? _stopTracking : _onTrackMePressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isTracking ? Colors.red : const Color(0xFFFF69B4),
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
                   ),
-                  child: Text(
-                    _isTracking ? 'Stop Sharing' : 'Share Location',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                ),
+                child: Text(
+                  _isTracking ? 'Stop Sharing' : 'Share Location',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
               ),
-            ],
+            ),
           ],
         ),
         bottomNavigationBar: const BottomNavBar(currentIndex: 2),

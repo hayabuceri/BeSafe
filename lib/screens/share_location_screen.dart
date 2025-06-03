@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
 import 'track_me_screen.dart';
+import '../widgets/sos_button.dart';
+import '../widgets/bottom_nav_bar.dart';
 
 class ShareLocationScreen extends StatefulWidget {
   const ShareLocationScreen({Key? key}) : super(key: key);
@@ -344,44 +346,7 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.black,
-        selectedItemColor: const Color(0xFFFF69B4),
-        unselectedItemColor: Colors.white,
-        currentIndex: 2, // Track Me tab
-        onTap: (index) {
-          if (index == 0) {
-            // Navigate to home and clear the stack
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const HomeScreen()),
-              (route) => false,
-            );
-          } else if (index == 1) {
-            // SOS button - keep on current screen
-          } else if (index == 2) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const TrackMeScreen()),
-              (route) => false,
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.emergency),
-            label: 'SOS',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.location_on),
-            label: 'Track Me',
-          ),
-        ],
-      ),
+      bottomNavigationBar: const BottomNavBar(currentIndex: 2),
     );
   }
 
