@@ -20,11 +20,13 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
   List<Map<String, dynamic>> _contacts = [];
   List<Map<String, dynamic>> _filteredContacts = [];
   bool _isLoading = true;
+  List<Map<String, dynamic>> _contactGroups = []; // Add state variable for groups
+  Set<String> _selectedGroups = {}; // Add state variable for selected groups
 
   @override
   void initState() {
     super.initState();
-    _loadContacts();
+    _loadContactsAndGroups(); // Call the new loading method
     _searchController.addListener(_filterContacts);
   }
 
@@ -44,7 +46,7 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
     });
   }
 
-  Future<void> _loadContacts() async {
+  Future<void> _loadContactsAndGroups() async {
     setState(() {
       _isLoading = true;
     });
@@ -52,10 +54,18 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
+        // Load Contacts
         final contactsSnapshot = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .collection('emergency_contacts')
+            .get();
+
+        // Load Groups (fetch from existing sos_groups)
+        final groupsSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('sos_groups') // **Fetch from sos_groups**
             .get();
 
         setState(() {
@@ -63,14 +73,24 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
               .map((doc) => {
                     'id': doc.id,
                     'name': doc['name'] as String,
+                    // Include other contact fields if needed
                   })
               .toList();
           _filteredContacts = _contacts; // Initialize filtered contacts
+
+          _contactGroups = groupsSnapshot.docs
+              .map((doc) => {
+                    'id': doc.id,
+                    'name': doc['name'] as String,
+                    'members': List<String>.from(doc['members'] ?? []), // List of contact IDs
+                  })
+              .toList();
+
           _isLoading = false;
         });
       }
     } catch (e) {
-      print('Error loading contacts: $e');
+      print('Error loading contacts and groups: $e');
       setState(() {
         _isLoading = false;
       });
@@ -81,8 +101,34 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
     setState(() {
       if (_selectedContacts.contains(contactId)) {
         _selectedContacts.remove(contactId);
+        // If contact is deselected, also deselect any groups that were fully selected and contained this contact
+        _selectedGroups.removeWhere((groupId) {
+          final group = _contactGroups.firstWhere((g) => g['id'] == groupId);
+          // Only deselect the group if the removed contact was the last selected member from that group
+          // This part of the logic can become complex if contacts can be in multiple groups.
+          // For simplicity now, we'll just check if the contact is in the group.
+          return (group['members'] as List<String>).contains(contactId);
+        });
       } else {
         _selectedContacts.add(contactId);
+        // When a contact is selected, we don't automatically select its groups.
+      }
+    });
+  }
+
+  void _toggleGroup(String groupId) {
+    setState(() {
+      final group = _contactGroups.firstWhere((g) => g['id'] == groupId);
+      final members = List<String>.from(group['members'] ?? []); // Ensure members is a List<String>
+
+      if (_selectedGroups.contains(groupId)) {
+        _selectedGroups.remove(groupId);
+        // Deselect all contacts in this group
+        _selectedContacts.removeAll(members);
+      } else {
+        _selectedGroups.add(groupId);
+        // Select all contacts in this group
+        _selectedContacts.addAll(members);
       }
     });
   }
@@ -125,54 +171,6 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
     }
   }
 
-  Widget _buildContactAvatar(Map<String, dynamic> contact) {
-    final isSelected = _selectedContacts.contains(contact['id']);
-    return Column(
-      children: [
-        Stack(
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: const Color(0xFFFF69B4),
-              child: Text(
-                contact['name'][0].toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            if (isSelected)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFF69B4),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_circle,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          contact['name'],
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -182,6 +180,13 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Share Location',
+          style: TextStyle(
+            color: Color(0xFFFF69B4),
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       body: SafeArea(
@@ -253,6 +258,61 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+              const Text(
+                'Contact Groups',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (_isLoading)
+                const Center(
+                  child: CircularProgressIndicator(color: Color(0xFFFF69B4)),
+                )
+              else if (_contactGroups.isEmpty)
+                const Text(
+                  'No contact groups found',
+                  style: TextStyle(color: Colors.grey),
+                )
+              else
+                SizedBox(
+                  height: 50,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _contactGroups.length,
+                    separatorBuilder: (context, index) => const SizedBox(width: 16),
+                    itemBuilder: (context, index) {
+                      final group = _contactGroups[index];
+                      final isSelected = _selectedGroups.contains(group['id']);
+                      return GestureDetector(
+                        onTap: () => _toggleGroup(group['id']),
+                        child: Chip(
+                          label: Text(group['name'], style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0))),
+                          backgroundColor: isSelected ? const Color(0xFFFF69B4) : Colors.white.withOpacity(0.1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(
+                              color: isSelected ? const Color(0xFFFF69B4) : Colors.transparent,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 24),
+              const Text(
+                'Emergency Contacts',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 16),
               if (_isLoading)
                 const Center(
                   child: CircularProgressIndicator(color: Color(0xFFFF69B4)),
@@ -277,31 +337,14 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
                         const SizedBox(width: 16),
                     itemBuilder: (context, index) {
                       final contact = _filteredContacts[index];
+                      final isSelected = _selectedContacts.contains(contact['id']);
                       return GestureDetector(
                         onTap: () => _toggleContact(contact['id']),
-                        child: _buildContactAvatar(contact),
+                        child: _buildContactAvatar(contact, isSelected),
                       );
                     },
                   ),
                 ),
-              const SizedBox(height: 24),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF69B4),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'Family',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
               const SizedBox(height: 24),
               const Text(
                 'Live location duration',
@@ -373,6 +416,53 @@ class _ShareLocationScreenState extends State<ShareLocationScreen> {
           textAlign: TextAlign.center,
         ),
       ),
+    );
+  }
+
+  Widget _buildContactAvatar(Map<String, dynamic> contact, bool isSelected) {
+    return Column(
+      children: [
+        Stack(
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: const Color(0xFFFF69B4),
+              child: Text(
+                contact['name'][0].toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF69B4),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          contact['name'],
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+          ),
+        ),
+      ],
     );
   }
 } 

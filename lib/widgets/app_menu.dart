@@ -63,7 +63,7 @@ class AppMenu extends StatelessWidget {
         ),
         PopupMenuItem(
           child: const Text(
-            'Manage SOS Groups',
+            'Manage Group',
             style: TextStyle(color: Colors.black),
           ),
           onTap: () async {

@@ -383,7 +383,15 @@ class _SharedLocationsScreenState extends State<SharedLocationsScreen> {
                                             ),
                                           ),
                                           const Spacer(),
-                                          _SOSCountdownLabel(endTime: endTime),
+                                          _SOSCountdownLabel(endTime: endTime, alertId: alertId),
+                                          if (location != null)
+                                            IconButton(
+                                              icon: const Icon(Icons.navigation, color: Color(0xFFFF69B4)),
+                                              onPressed: () {
+                                                final url = 'https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}';
+                                                launchUrl(Uri.parse(url));
+                                              },
+                                            ),
                                         ],
                                       ),
                                       const SizedBox(height: 8),
@@ -450,14 +458,15 @@ class _SharedLocationsScreenState extends State<SharedLocationsScreen> {
 
 class _SOSCountdownLabel extends StatefulWidget {
   final DateTime endTime;
-  const _SOSCountdownLabel({Key? key, required this.endTime}) : super(key: key);
+  final String alertId;
+  const _SOSCountdownLabel({Key? key, required this.endTime, required this.alertId}) : super(key: key);
 
   @override
   State<_SOSCountdownLabel> createState() => _SOSCountdownLabelState();
 }
 
 class _SOSCountdownLabelState extends State<_SOSCountdownLabel> {
-  late Timer _timer;
+  Timer? _timer;
   String _remaining = '';
 
   @override
@@ -474,7 +483,16 @@ class _SOSCountdownLabelState extends State<_SOSCountdownLabel> {
       setState(() {
         _remaining = '00:00:00';
       });
-      _timer.cancel();
+      _timer?.cancel();
+
+      FirebaseFirestore.instance
+          .collection('sos_alerts')
+          .doc(widget.alertId)
+          .update({'status': 'expired', 'endTime': FieldValue.serverTimestamp()})
+          .catchError((error) {
+            print('Error updating SOS status: $error');
+          });
+
       return;
     }
     final h = diff.inHours;
@@ -487,7 +505,7 @@ class _SOSCountdownLabelState extends State<_SOSCountdownLabel> {
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
     super.dispose();
   }
 

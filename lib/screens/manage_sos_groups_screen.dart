@@ -524,7 +524,7 @@ class _ManageSOSGroupsScreenState extends State<ManageSOSGroupsScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: 'Manage SOS Groups',
+        title: 'Manage Group',
       ),
       body: _isLoading
           ? const Center(

@@ -33,8 +33,6 @@ class LocationService {
       _positionSubscription = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: 5, // Update every 5 meters
-          timeLimit: Duration(seconds: 10), // Force update every 10 seconds
         ),
       ).listen((Position position) {
         _updateLocationInFirestore(position);
